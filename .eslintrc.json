@@ -3,7 +3,17 @@
   "ignorePatterns": [
     "src/generated/**/*",
     "**/prisma/**/*",
-    "**/generated/**/*"
+    "**/generated/**/*",
+    "**/runtime/**/*",
+    "**/wasm.js",
+    "**/edge.js",
+    "**/edge-esm.js",
+    "**/index-browser.js",
+    "**/index-browser.d.ts",
+    "**/library.js",
+    "**/library.d.ts",
+    "**/react-native.js",
+    "**/wasm.js"
   ],
   "rules": {
     "@typescript-eslint/no-explicit-any": "off",
