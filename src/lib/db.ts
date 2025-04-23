@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_CONNECTION_STRING = process.env.MONGODB_CONNECTION_STRING;
 
-if (!MONGODB_URI) {
+if (!MONGODB_CONNECTION_STRING) {
   throw new Error(
-    "Please define the MONGODB_URI environment variable inside .env"
+    "Please define the MONGODB_CONNECTION_STRING environment variable inside .env"
   );
 }
 
@@ -37,9 +37,11 @@ async function connectDB() {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
-      return mongoose;
-    });
+    cached.promise = mongoose
+      .connect(MONGODB_CONNECTION_STRING!, opts)
+      .then((mongoose) => {
+        return mongoose;
+      });
   }
 
   try {

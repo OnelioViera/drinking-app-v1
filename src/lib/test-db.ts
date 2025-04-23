@@ -3,7 +3,10 @@ import connectDB from "./db";
 async function testConnection() {
   try {
     console.log("Checking environment variables...");
-    console.log("MONGODB_URI exists:", !!process.env.MONGODB_URI);
+    console.log(
+      "MONGODB_CONNECTION_STRING exists:",
+      !!process.env.MONGODB_CONNECTION_STRING
+    );
 
     console.log("\nAttempting to connect to MongoDB...");
     const mongoose = await connectDB();
