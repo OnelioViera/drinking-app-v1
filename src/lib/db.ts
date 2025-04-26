@@ -35,11 +35,15 @@ async function connectDB() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      dbName: "drinking",
     };
 
+    console.log("Connecting to MongoDB...");
     cached.promise = mongoose
       .connect(MONGODB_CONNECTION_STRING!, opts)
       .then((mongoose) => {
+        console.log("Connected to MongoDB successfully!");
+        console.log("Database name:", mongoose.connection.name);
         return mongoose;
       });
   }
@@ -48,6 +52,7 @@ async function connectDB() {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
+    console.error("Failed to connect to MongoDB:", e);
     throw e;
   }
 
