@@ -39,8 +39,79 @@ export default function AIChat() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const topics = [
+    {
+      title: "Cravings",
+      response:
+        "Cravings are a normal part of recovery. Try these strategies:\n1. Distract yourself with a hobby or exercise\n2. Practice deep breathing\n3. Call a support person\n4. Remember your reasons for staying sober",
+    },
+    {
+      title: "Relapse Prevention",
+      response:
+        "Here are some key strategies for preventing relapse:\n1. Identify your triggers\n2. Develop healthy coping mechanisms\n3. Build a strong support network\n4. Practice self-care regularly\n5. Stay connected with your recovery community",
+    },
+    {
+      title: "Stress Management",
+      response:
+        "Managing stress is crucial in recovery. Consider:\n1. Regular exercise\n2. Meditation or mindfulness\n3. Talking to a therapist\n4. Joining a support group\n5. Practicing deep breathing exercises",
+    },
+    {
+      title: "Support Resources",
+      response:
+        "There are many support options available:\n1. AA meetings\n2. SMART Recovery\n3. Online support groups\n4. Professional counseling\n5. Sober living communities",
+    },
+  ];
+
+  const handleNewConversation = () => {
+    setMessages([
+      {
+        role: "assistant",
+        content:
+          "Hello! I'm here to support you on your journey to sobriety. How can I help you today?",
+      },
+    ]);
+  };
+
+  const handleTopicClick = async (topic: {
+    title: string;
+    response: string;
+  }) => {
+    const userMessage: Message = {
+      role: "user",
+      content: `Tell me about ${topic.title}`,
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: topic.response },
+      ]);
+    } catch (error) {
+      console.error("Error getting AI response:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            "I apologize, but I'm having trouble responding right now. Please try again later.",
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesEndRef.current) {
+      const container = messagesEndRef.current.parentElement;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
   };
 
   useEffect(() => {
@@ -113,9 +184,29 @@ export default function AIChat() {
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-2xl font-semibold text-blue-700 mb-4">
-        AI Support Assistant
-      </h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-semibold text-blue-700">
+          AI Support Assistant
+        </h2>
+        <button
+          onClick={handleNewConversation}
+          className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 transition flex items-center gap-2"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+              clipRule="evenodd"
+            />
+          </svg>
+          New Conversation
+        </button>
+      </div>
       <div className="h-[200px] overflow-y-auto mb-4 space-y-4 pr-2 custom-scrollbar">
         {messages.map((message, index) => (
           <div
@@ -135,6 +226,22 @@ export default function AIChat() {
           </div>
         )}
         <div ref={messagesEndRef} />
+      </div>
+      <div className="border-t border-gray-200 pt-4 mb-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">
+          Quick Topics:
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {topics.map((topic, index) => (
+            <button
+              key={index}
+              onClick={() => handleTopicClick(topic)}
+              className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm hover:bg-blue-100 transition"
+            >
+              {topic.title}
+            </button>
+          ))}
+        </div>
       </div>
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
