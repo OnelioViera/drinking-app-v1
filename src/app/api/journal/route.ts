@@ -24,7 +24,9 @@ export async function GET() {
   try {
     console.log("Attempting to fetch journal entries...");
     await connectDB();
-    const entries = await JournalEntry.find({}).sort({ date: -1 });
+    const entries = await JournalEntry.find({ deleted: false }).sort({
+      date: -1,
+    });
     console.log("Found entries:", entries);
     return NextResponse.json(entries);
   } catch (error) {

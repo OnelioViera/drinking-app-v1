@@ -29,24 +29,25 @@ export default function Journal({ onEntriesChange }: JournalProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
+  // Load entries from localStorage on component mount
   useEffect(() => {
-    const fetchEntries = async () => {
-      console.log("Fetching entries...");
-      try {
-        const response = await fetch("/api/journal");
-        console.log("Response status:", response.status);
-        if (!response.ok) throw new Error("Failed to fetch entries");
-        const data = await response.json();
-        console.log("Fetched data:", data);
-        setEntries(data);
-        onEntriesChange?.(data);
-      } catch (error) {
-        console.error("Error fetching entries:", error);
-        toast.error("Failed to load journal entries");
-      }
-    };
-    fetchEntries();
+    const savedEntries = localStorage.getItem("journalEntries");
+    if (savedEntries) {
+      const parsedEntries = JSON.parse(savedEntries).map(
+        (entry: Omit<JournalEntry, "date"> & { date: string }) => ({
+          ...entry,
+          date: new Date(entry.date),
+        })
+      );
+      setEntries(parsedEntries);
+      onEntriesChange?.(parsedEntries);
+    }
   }, [onEntriesChange]);
+
+  // Save entries to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("journalEntries", JSON.stringify(entries));
+  }, [entries]);
 
   const moods = ["Great", "Good", "Neutral", "Anxious", "Stressed", "Tired"];
 
@@ -84,36 +85,22 @@ export default function Journal({ onEntriesChange }: JournalProps) {
     console.log("Saving entry:", entry);
     try {
       if (editingIndex !== null) {
-        console.log("Updating existing entry...");
-        const response = await fetch(
-          `/api/journal/${entries[editingIndex]._id}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(entry),
-          }
-        );
-        console.log("Update response status:", response.status);
-        if (!response.ok) throw new Error("Failed to update entry");
-        const updatedEntry = await response.json();
-        console.log("Updated entry:", updatedEntry);
+        // Update existing entry
         const newEntries = [...entries];
-        newEntries[editingIndex] = updatedEntry;
+        newEntries[editingIndex] = {
+          ...entry,
+          _id: entries[editingIndex]._id || Date.now().toString(),
+        };
         setEntries(newEntries);
         onEntriesChange?.(newEntries);
         toast.success("Journal entry updated!");
         setEditingIndex(null);
       } else {
-        console.log("Creating new entry...");
-        const response = await fetch("/api/journal", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(entry),
-        });
-        console.log("Create response status:", response.status);
-        if (!response.ok) throw new Error("Failed to save entry");
-        const newEntry = await response.json();
-        console.log("Created entry:", newEntry);
+        // Create new entry
+        const newEntry = {
+          ...entry,
+          _id: Date.now().toString(),
+        };
         const newEntries = [...entries, newEntry];
         setEntries(newEntries);
         onEntriesChange?.(newEntries);
@@ -163,25 +150,11 @@ export default function Journal({ onEntriesChange }: JournalProps) {
     });
   };
 
-  const handleDelete = async (index: number) => {
+  const handleDelete = (index: number) => {
     try {
-      const entryToDelete = entries[index];
-      if (!entryToDelete._id) {
-        throw new Error("Entry ID not found");
-      }
-
-      const response = await fetch(`/api/journal/${entryToDelete._id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete entry");
-      }
-
       const newEntries = entries.filter((_, i) => i !== index);
       setEntries(newEntries);
       onEntriesChange?.(newEntries);
-
       toast.success("Entry deleted successfully!", {
         duration: 4000,
         position: "top-center",
@@ -290,7 +263,7 @@ export default function Journal({ onEntriesChange }: JournalProps) {
         <div className="h-[300px] overflow-y-auto space-y-4 pr-2 custom-scrollbar">
           {entries.map((entry, index) => (
             <div
-              key={index}
+              key={entry._id || index}
               className="border border-gray-200 rounded-lg p-4 bg-white"
             >
               <div className="flex justify-between items-start mb-2">

@@ -8,20 +8,24 @@ export async function DELETE(
 ) {
   try {
     await connectDB();
-    const deletedEntry = await JournalEntry.findByIdAndDelete(params.id);
+    const updatedEntry = await JournalEntry.findByIdAndUpdate(
+      params.id,
+      { deleted: true },
+      { new: true }
+    );
 
-    if (!deletedEntry) {
+    if (!updatedEntry) {
       return NextResponse.json(
         { error: "Journal entry not found" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ message: "Journal entry deleted successfully" });
+    return NextResponse.json({ message: "Journal entry marked as deleted" });
   } catch (error) {
-    console.error("Failed to delete journal entry:", error);
+    console.error("Failed to mark journal entry as deleted:", error);
     return NextResponse.json(
-      { error: "Failed to delete journal entry" },
+      { error: "Failed to mark journal entry as deleted" },
       { status: 500 }
     );
   }
