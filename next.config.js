@@ -11,9 +11,14 @@ const nextConfig = {
   },
   // Ignore test directories
   pageExtensions: ['ts', 'tsx', 'js', 'jsx'],
-  // Exclude test files from the build
+  // Configure Turbopack
   experimental: {
-    excludeFiles: ['**/__tests__/**/*']
+    turbo: {
+      rules: {
+        // Exclude test files from the build
+        '**/__tests__/**/*': ['ignore']
+      }
+    }
   }
 };
 
