@@ -10,7 +10,11 @@ interface JournalEntry {
   notes: string;
 }
 
-export default function Journal() {
+interface JournalProps {
+  onEntriesChange?: (entries: JournalEntry[]) => void;
+}
+
+export default function Journal({ onEntriesChange }: JournalProps) {
   const [entry, setEntry] = useState<JournalEntry>({
     date: new Date(),
     mood: "",
@@ -26,9 +30,16 @@ export default function Journal() {
     // Load entries from localStorage
     const savedEntries = localStorage.getItem("journalEntries");
     if (savedEntries) {
-      setEntries(JSON.parse(savedEntries));
+      const parsedEntries = JSON.parse(savedEntries).map(
+        (entry: Omit<JournalEntry, "date"> & { date: string }) => ({
+          ...entry,
+          date: new Date(entry.date),
+        })
+      );
+      setEntries(parsedEntries);
+      onEntriesChange?.(parsedEntries);
     }
-  }, []);
+  }, [onEntriesChange]);
 
   const moods = ["Great", "Good", "Neutral", "Anxious", "Stressed", "Tired"];
 
@@ -78,6 +89,7 @@ export default function Journal() {
       newEntries[editingIndex] = entry;
       setEntries(newEntries);
       localStorage.setItem("journalEntries", JSON.stringify(newEntries));
+      onEntriesChange?.(newEntries);
       toast.success("Journal entry updated!", {
         duration: 4000,
         position: "top-center",
@@ -94,6 +106,7 @@ export default function Journal() {
       const newEntries = [...entries, entry];
       setEntries(newEntries);
       localStorage.setItem("journalEntries", JSON.stringify(newEntries));
+      onEntriesChange?.(newEntries);
       toast.success("Journal entry saved!", {
         duration: 4000,
         position: "top-center",
@@ -246,60 +259,58 @@ export default function Journal() {
       </div>
 
       {/* Previous Entries */}
-      {entries.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-lg font-medium text-gray-700 mb-4">
-            Previous Entries
-          </h3>
-          <div className="space-y-4">
-            {entries.map((entry, index) => (
-              <div
-                key={index}
-                className="border border-gray-200 rounded-lg p-4 bg-white"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <p className="text-sm text-gray-500">
-                    {new Date(entry.date).toLocaleDateString()}
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEdit(index)}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(index)}
-                      className="text-red-600 hover:text-red-800 text-sm font-medium"
-                    >
-                      Delete
-                    </button>
+      <div className="mt-8">
+        <h3 className="text-lg font-medium text-gray-700 mb-4">
+          Previous Entries
+        </h3>
+        <div className="h-[300px] overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+          {entries.map((entry, index) => (
+            <div
+              key={index}
+              className="border border-gray-200 rounded-lg p-4 bg-white"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <p className="text-sm text-gray-500">
+                  {new Date(entry.date).toLocaleDateString()}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEdit(index)}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(index)}
+                    className="text-red-600 hover:text-red-800 text-sm font-medium"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+              <p className="font-medium text-blue-600">{entry.mood}</p>
+              {entry.triggers.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-sm text-gray-600">Triggers:</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {entry.triggers.map((trigger) => (
+                      <span
+                        key={trigger}
+                        className="bg-red-100 text-red-700 px-2 py-1 rounded text-sm"
+                      >
+                        {trigger}
+                      </span>
+                    ))}
                   </div>
                 </div>
-                <p className="font-medium text-blue-600">{entry.mood}</p>
-                {entry.triggers.length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-600">Triggers:</p>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {entry.triggers.map((trigger) => (
-                        <span
-                          key={trigger}
-                          className="bg-red-100 text-red-700 px-2 py-1 rounded text-sm"
-                        >
-                          {trigger}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {entry.notes && (
-                  <p className="mt-2 text-gray-700">{entry.notes}</p>
-                )}
-              </div>
-            ))}
-          </div>
+              )}
+              {entry.notes && (
+                <p className="mt-2 text-gray-700">{entry.notes}</p>
+              )}
+            </div>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }

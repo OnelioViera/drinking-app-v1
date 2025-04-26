@@ -4,15 +4,37 @@ import { useState, useEffect } from "react";
 import { Toaster, toast } from "react-hot-toast";
 import SobrietyCounter from "@/components/SobrietyCounter";
 import Journal from "@/components/Journal";
+import AIChat from "@/components/AIChat";
+import ProgressGraph from "@/components/ProgressGraph";
+
+interface JournalEntry {
+  date: Date;
+  mood: string;
+  triggers: string[];
+  notes: string;
+}
 
 export default function Home() {
   const [startDate, setStartDate] = useState<Date | null>(null);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
 
   useEffect(() => {
     // Load start date from localStorage
     const savedDate = localStorage.getItem("sobrietyStartDate");
     if (savedDate) {
       setStartDate(new Date(savedDate));
+    }
+
+    // Load journal entries from localStorage
+    const savedEntries = localStorage.getItem("journalEntries");
+    if (savedEntries) {
+      const parsedEntries = JSON.parse(savedEntries).map(
+        (entry: Omit<JournalEntry, "date"> & { date: string }) => ({
+          ...entry,
+          date: new Date(entry.date),
+        })
+      );
+      setJournalEntries(parsedEntries);
     }
   }, []);
 
@@ -57,11 +79,14 @@ export default function Home() {
 
         {startDate ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <SobrietyCounter
-              startDate={startDate}
-              onResetAction={handleResetTimer}
-            />
-            <Journal />
+            <div className="space-y-8">
+              <SobrietyCounter
+                startDate={startDate}
+                onResetAction={handleResetTimer}
+              />
+              <AIChat />
+            </div>
+            <Journal onEntriesChange={setJournalEntries} />
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow-lg p-6 text-center">
@@ -74,6 +99,13 @@ export default function Home() {
             >
               Start Today
             </button>
+          </div>
+        )}
+
+        {/* Progress Graph */}
+        {startDate && journalEntries.length > 0 && (
+          <div className="mt-8">
+            <ProgressGraph entries={journalEntries} />
           </div>
         )}
 
