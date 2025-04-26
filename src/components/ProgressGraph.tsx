@@ -35,40 +35,23 @@ export default function ProgressGraph({ entries }: ProgressGraphProps) {
   const chartInstance = useRef<Chart | null>(null);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("day");
 
-  const filterEntriesByTime = (
-    entries: ProgressGraphProps["entries"],
-    filter: TimeFilter
-  ) => {
-    const now = new Date();
-    const filteredEntries = entries.filter((entry) => {
-      const entryDate = new Date(entry.date);
-      switch (filter) {
-        case "day":
-          return entryDate.toDateString() === now.toDateString();
-        case "week":
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          return entryDate >= weekAgo;
-        case "month":
-          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          return entryDate >= monthAgo;
-        default:
-          return true;
-      }
-    });
-    return filteredEntries;
-  };
-
-  useEffect(() => {
-    if (!chartRef.current) return;
-
-    // Destroy existing chart if it exists
+  // Function to destroy the chart
+  const destroyChart = () => {
     if (chartInstance.current) {
       chartInstance.current.destroy();
       chartInstance.current = null;
     }
+  };
 
-    // If there are no entries, don't create a new chart
-    if (entries.length === 0) return;
+  // Effect to handle chart updates
+  useEffect(() => {
+    // Always destroy the chart when entries change
+    destroyChart();
+
+    // If there are no entries or no canvas, don't create a new chart
+    if (!chartRef.current || entries.length === 0) {
+      return;
+    }
 
     const ctx = chartRef.current.getContext("2d");
     if (!ctx) return;
@@ -200,12 +183,37 @@ export default function ProgressGraph({ entries }: ProgressGraphProps) {
     chartInstance.current = new Chart(ctx, config);
 
     return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy();
-        chartInstance.current = null;
-      }
+      destroyChart();
     };
   }, [entries, timeFilter]);
+
+  const filterEntriesByTime = (
+    entries: ProgressGraphProps["entries"],
+    filter: TimeFilter
+  ) => {
+    const now = new Date();
+    const filteredEntries = entries.filter((entry) => {
+      const entryDate = new Date(entry.date);
+      switch (filter) {
+        case "day":
+          return entryDate.toDateString() === now.toDateString();
+        case "week":
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return entryDate >= weekAgo;
+        case "month":
+          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          return entryDate >= monthAgo;
+        default:
+          return true;
+      }
+    });
+    return filteredEntries;
+  };
+
+  // If there are no entries, don't render the graph section
+  if (entries.length === 0) {
+    return null;
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">

@@ -162,6 +162,7 @@ export default function Journal({ onEntriesChange }: JournalProps) {
     const newEntries = entries.filter((_, i) => i !== index);
     setEntries(newEntries);
     localStorage.setItem("journalEntries", JSON.stringify(newEntries));
+    onEntriesChange?.(newEntries);
     toast.success("Entry deleted successfully!", {
       duration: 4000,
       position: "top-center",

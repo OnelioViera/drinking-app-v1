@@ -38,6 +38,15 @@ export default function Home() {
     }
   }, []);
 
+  // Update localStorage when entries change
+  useEffect(() => {
+    if (journalEntries.length > 0) {
+      localStorage.setItem("journalEntries", JSON.stringify(journalEntries));
+    } else {
+      localStorage.removeItem("journalEntries");
+    }
+  }, [journalEntries]);
+
   const handleSetStartDate = () => {
     const today = new Date();
     setStartDate(today);
