@@ -145,6 +145,22 @@ export default function Journal() {
     });
   };
 
+  const handleDelete = (index: number) => {
+    const newEntries = entries.filter((_, i) => i !== index);
+    setEntries(newEntries);
+    localStorage.setItem("journalEntries", JSON.stringify(newEntries));
+    toast.success("Entry deleted successfully!", {
+      duration: 4000,
+      position: "top-center",
+      style: {
+        background: "#4CAF50",
+        color: "#fff",
+        padding: "16px",
+        borderRadius: "8px",
+      },
+    });
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <div ref={formRef}>
@@ -245,12 +261,20 @@ export default function Journal() {
                   <p className="text-sm text-gray-500">
                     {new Date(entry.date).toLocaleDateString()}
                   </p>
-                  <button
-                    onClick={() => handleEdit(index)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                  >
-                    Edit
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(index)}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(index)}
+                      className="text-red-600 hover:text-red-800 text-sm font-medium"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
                 <p className="font-medium text-blue-600">{entry.mood}</p>
                 {entry.triggers.length > 0 && (
