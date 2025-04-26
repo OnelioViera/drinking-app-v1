@@ -14,9 +14,131 @@ interface JournalEntry {
   notes: string;
 }
 
+const Fireworks = () => {
+  const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50">
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-black animate-overlay" />
+
+      {/* Encouragement Message */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="text-4xl font-bold text-center animate-encourage">
+          <span className="block animate-bounce text-blue-400">
+            You Can Do This!
+          </span>
+          <span className="block text-2xl mt-2 animate-pulse text-blue-300">
+            Your journey begins today
+          </span>
+        </div>
+      </div>
+
+      {/* Fireworks */}
+      {[...Array(8)].map((_, i) => (
+        <div
+          key={i}
+          className="absolute"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 60}%`,
+            animation: `firework ${2.5 + Math.random() * 0.5}s ease-out forwards`,
+            animationDelay: `${Math.random() * 0.3}s`,
+          }}
+        >
+          {[...Array(12)].map((_, j) => (
+            <div
+              key={j}
+              className="absolute w-4 h-4 rounded-full"
+              style={
+                {
+                  backgroundColor:
+                    colors[Math.floor(Math.random() * colors.length)],
+                  transform: `rotate(${j * 30}deg) translateY(-40px)`,
+                  animation: `sparkle ${1.5 + Math.random() * 0.4}s ease-out forwards`,
+                  animationDelay: `${Math.random() * 0.2}s`,
+                  "--rotation": `${j * 30}deg`,
+                  boxShadow: "0 0 8px 3px rgba(255, 255, 255, 0.6)",
+                } as React.CSSProperties
+              }
+            />
+          ))}
+        </div>
+      ))}
+      <style jsx global>{`
+        @keyframes firework {
+          0% {
+            transform: scale(0);
+            opacity: 1;
+          }
+          50% {
+            opacity: 1;
+          }
+          100% {
+            transform: scale(2);
+            opacity: 0;
+          }
+        }
+        @keyframes sparkle {
+          0% {
+            transform: rotate(var(--rotation)) translateY(0);
+            opacity: 1;
+          }
+          100% {
+            transform: rotate(var(--rotation)) translateY(150px);
+            opacity: 0;
+          }
+        }
+        @keyframes encourage {
+          0% {
+            opacity: 0;
+            transform: scale(0.5);
+          }
+          20% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          80% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          100% {
+            opacity: 0;
+            transform: scale(1.2);
+          }
+        }
+        @keyframes overlay {
+          0% {
+            opacity: 0;
+          }
+          20% {
+            opacity: 0.8;
+          }
+          80% {
+            opacity: 0.8;
+          }
+          100% {
+            opacity: 0;
+          }
+        }
+        .animate-encourage {
+          animation: encourage 10s ease-in-out forwards;
+          text-shadow:
+            0 0 15px rgba(255, 255, 255, 0.8),
+            0 0 30px rgba(255, 255, 255, 0.4);
+        }
+        .animate-overlay {
+          animation: overlay 10s ease-in-out forwards;
+        }
+      `}</style>
+    </div>
+  );
+};
+
 export default function Home() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  const [showFireworks, setShowFireworks] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
 
   // Calculate time elapsed since start date
@@ -77,6 +199,8 @@ export default function Home() {
     const today = new Date();
     setStartDate(today);
     localStorage.setItem("sobrietyStartDate", today.toISOString());
+    setShowFireworks(true);
+    setTimeout(() => setShowFireworks(false), 10000);
     document.body.style.overflow = "hidden";
     document.body.style.position = "fixed";
     document.body.style.width = "100%";
@@ -120,6 +244,7 @@ export default function Home() {
       ref={mainRef}
     >
       <Toaster />
+      {showFireworks && <Fireworks />}
       <div className="container mx-auto px-4 py-8 overflow-x-hidden">
         <h1 className="text-4xl font-bold text-center text-blue-800 mb-8">
           Your Journey to Sobriety
