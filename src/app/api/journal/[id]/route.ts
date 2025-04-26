@@ -2,13 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import JournalEntry from "@/models/JournalEntry";
 
-type RouteContext = {
-  params: {
-    id: string;
-  };
-};
-
-export async function DELETE(request: NextRequest, { params }: RouteContext) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     await connectDB();
     const deletedEntry = await JournalEntry.findByIdAndDelete(params.id);
