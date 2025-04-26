@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 
 interface JournalEntry {
+  _id?: string;
   date: Date;
   mood: string;
   triggers: string[];
@@ -15,6 +16,8 @@ interface JournalProps {
 }
 
 export default function Journal({ onEntriesChange }: JournalProps) {
+  console.log("Journal component mounted");
+
   const [entry, setEntry] = useState<JournalEntry>({
     date: new Date(),
     mood: "",
@@ -27,18 +30,22 @@ export default function Journal({ onEntriesChange }: JournalProps) {
   const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Load entries from localStorage
-    const savedEntries = localStorage.getItem("journalEntries");
-    if (savedEntries) {
-      const parsedEntries = JSON.parse(savedEntries).map(
-        (entry: Omit<JournalEntry, "date"> & { date: string }) => ({
-          ...entry,
-          date: new Date(entry.date),
-        })
-      );
-      setEntries(parsedEntries);
-      onEntriesChange?.(parsedEntries);
-    }
+    const fetchEntries = async () => {
+      console.log("Fetching entries...");
+      try {
+        const response = await fetch("/api/journal");
+        console.log("Response status:", response.status);
+        if (!response.ok) throw new Error("Failed to fetch entries");
+        const data = await response.json();
+        console.log("Fetched data:", data);
+        setEntries(data);
+        onEntriesChange?.(data);
+      } catch (error) {
+        console.error("Error fetching entries:", error);
+        toast.error("Failed to load journal entries");
+      }
+    };
+    fetchEntries();
   }, [onEntriesChange]);
 
   const moods = ["Great", "Good", "Neutral", "Anxious", "Stressed", "Tired"];
@@ -68,64 +75,62 @@ export default function Journal({ onEntriesChange }: JournalProps) {
     setEntry((prev) => ({ ...prev, notes: e.target.value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!entry.mood) {
-      toast.error("Please select your mood", {
-        duration: 4000,
-        position: "top-center",
-        style: {
-          background: "#f44336",
-          color: "#fff",
-          padding: "16px",
-          borderRadius: "8px",
-        },
-      });
+      toast.error("Please select your mood");
       return;
     }
 
-    if (editingIndex !== null) {
-      // Update existing entry
-      const newEntries = [...entries];
-      newEntries[editingIndex] = entry;
-      setEntries(newEntries);
-      localStorage.setItem("journalEntries", JSON.stringify(newEntries));
-      onEntriesChange?.(newEntries);
-      toast.success("Journal entry updated!", {
-        duration: 4000,
-        position: "top-center",
-        style: {
-          background: "#4CAF50",
-          color: "#fff",
-          padding: "16px",
-          borderRadius: "8px",
-        },
-      });
-      setEditingIndex(null);
-    } else {
-      // Add new entry
-      const newEntries = [...entries, entry];
-      setEntries(newEntries);
-      localStorage.setItem("journalEntries", JSON.stringify(newEntries));
-      onEntriesChange?.(newEntries);
-      toast.success("Journal entry saved!", {
-        duration: 4000,
-        position: "top-center",
-        style: {
-          background: "#4CAF50",
-          color: "#fff",
-          padding: "16px",
-          borderRadius: "8px",
-        },
-      });
-    }
+    console.log("Saving entry:", entry);
+    try {
+      if (editingIndex !== null) {
+        console.log("Updating existing entry...");
+        const response = await fetch(
+          `/api/journal/${entries[editingIndex]._id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(entry),
+          }
+        );
+        console.log("Update response status:", response.status);
+        if (!response.ok) throw new Error("Failed to update entry");
+        const updatedEntry = await response.json();
+        console.log("Updated entry:", updatedEntry);
+        const newEntries = [...entries];
+        newEntries[editingIndex] = updatedEntry;
+        setEntries(newEntries);
+        onEntriesChange?.(newEntries);
+        toast.success("Journal entry updated!");
+        setEditingIndex(null);
+      } else {
+        console.log("Creating new entry...");
+        const response = await fetch("/api/journal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(entry),
+        });
+        console.log("Create response status:", response.status);
+        if (!response.ok) throw new Error("Failed to save entry");
+        const newEntry = await response.json();
+        console.log("Created entry:", newEntry);
+        const newEntries = [...entries, newEntry];
+        setEntries(newEntries);
+        onEntriesChange?.(newEntries);
+        toast.success("Journal entry saved!");
+      }
 
-    // Reset form
-    setEntry({
-      date: new Date(),
-      mood: "",
-      triggers: [],
-      notes: "",
-    });
+      // Reset form
+      setEntry({
+        date: new Date(),
+        mood: "",
+        triggers: [],
+        notes: "",
+      });
+    } catch (error) {
+      console.error("Error saving entry:", error);
+      toast.error("Failed to save journal entry");
+    }
   };
 
   const handleEdit = (index: number) => {
@@ -158,21 +163,39 @@ export default function Journal({ onEntriesChange }: JournalProps) {
     });
   };
 
-  const handleDelete = (index: number) => {
-    const newEntries = entries.filter((_, i) => i !== index);
-    setEntries(newEntries);
-    localStorage.setItem("journalEntries", JSON.stringify(newEntries));
-    onEntriesChange?.(newEntries);
-    toast.success("Entry deleted successfully!", {
-      duration: 4000,
-      position: "top-center",
-      style: {
-        background: "#4CAF50",
-        color: "#fff",
-        padding: "16px",
-        borderRadius: "8px",
-      },
-    });
+  const handleDelete = async (index: number) => {
+    try {
+      const entryToDelete = entries[index];
+      if (!entryToDelete._id) {
+        throw new Error("Entry ID not found");
+      }
+
+      const response = await fetch(`/api/journal/${entryToDelete._id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete entry");
+      }
+
+      const newEntries = entries.filter((_, i) => i !== index);
+      setEntries(newEntries);
+      onEntriesChange?.(newEntries);
+
+      toast.success("Entry deleted successfully!", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#4CAF50",
+          color: "#fff",
+          padding: "16px",
+          borderRadius: "8px",
+        },
+      });
+    } catch (error) {
+      console.error("Error deleting entry:", error);
+      toast.error("Failed to delete entry");
+    }
   };
 
   return (

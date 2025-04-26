@@ -29,6 +29,7 @@ if (!global.mongoose) {
 
 async function connectDB() {
   if (cached.conn) {
+    console.log("Using cached database connection");
     return cached.conn;
   }
 
@@ -39,11 +40,20 @@ async function connectDB() {
     };
 
     console.log("Connecting to MongoDB...");
+    console.log(
+      "Connection string format:",
+      MONGODB_CONNECTION_STRING?.replace(
+        /mongodb\+srv:\/\/([^:]+):([^@]+)@/,
+        "mongodb+srv://[USERNAME]:[PASSWORD]@"
+      ) || "Not set"
+    );
+
     cached.promise = mongoose
       .connect(MONGODB_CONNECTION_STRING!, opts)
       .then((mongoose) => {
         console.log("Connected to MongoDB successfully!");
         console.log("Database name:", mongoose.connection.name);
+        console.log("Connection state:", mongoose.connection.readyState);
         return mongoose;
       });
   }
