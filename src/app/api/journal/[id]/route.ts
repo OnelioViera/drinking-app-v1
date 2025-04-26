@@ -4,13 +4,11 @@ import JournalEntry from "@/models/JournalEntry";
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     await connectDB();
-    const deletedEntry = await JournalEntry.findByIdAndDelete(
-      context.params.id
-    );
+    const deletedEntry = await JournalEntry.findByIdAndDelete(params.id);
 
     if (!deletedEntry) {
       return NextResponse.json(
