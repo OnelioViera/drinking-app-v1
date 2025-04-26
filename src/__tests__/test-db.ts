@@ -1,4 +1,5 @@
 import connectDB from "./db";
+import { MongoServerError } from "mongodb";
 
 async function testConnection() {
   try {
@@ -35,9 +36,9 @@ async function testConnection() {
     console.log("All documents:", allDocs);
 
     process.exit(0);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Failed:", error);
-    if (error.name === "MongoServerError") {
+    if (error instanceof MongoServerError) {
       console.log("\nTroubleshooting tips:");
       console.log("1. Check if username and password are correct");
       console.log(
