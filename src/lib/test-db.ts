@@ -3,10 +3,13 @@ import connectDB from "./db";
 async function testConnection() {
   try {
     console.log("Checking environment variables...");
-    console.log(
-      "MONGODB_CONNECTION_STRING exists:",
-      !!process.env.MONGODB_CONNECTION_STRING
+    // Hide sensitive parts of the connection string
+    const connectionString = process.env.MONGODB_CONNECTION_STRING || "";
+    const maskedString = connectionString.replace(
+      /mongodb\+srv:\/\/([^:]+):([^@]+)@/,
+      "mongodb+srv://[USERNAME]:[PASSWORD]@"
     );
+    console.log("Connection string format:", maskedString);
 
     console.log("\nAttempting to connect to MongoDB...");
     const mongoose = await connectDB();
@@ -32,8 +35,19 @@ async function testConnection() {
     console.log("All documents:", allDocs);
 
     process.exit(0);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed:", error);
+    if (error.name === "MongoServerError") {
+      console.log("\nTroubleshooting tips:");
+      console.log("1. Check if username and password are correct");
+      console.log(
+        "2. Verify that the IP address is whitelisted in MongoDB Atlas"
+      );
+      console.log("3. Ensure the user has the correct database permissions");
+      console.log(
+        "4. Check if special characters in password are properly URL encoded"
+      );
+    }
     process.exit(1);
   }
 }
