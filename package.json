@@ -10,6 +10,7 @@
     "test-db": "dotenv -e .env.local -- ts-node src/__tests__/test-db.ts"
   },
   "dependencies": {
+    "@clerk/nextjs": "^4.29.7",
     "bcryptjs": "^3.0.2",
     "chart.js": "^4.4.9",
     "mongodb": "^6.16.0",

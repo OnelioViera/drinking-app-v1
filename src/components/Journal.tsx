@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
+import { useUser } from "@clerk/nextjs";
 
 interface JournalEntry {
   _id?: string;
@@ -16,8 +17,7 @@ interface JournalProps {
 }
 
 export default function Journal({ onEntriesChange }: JournalProps) {
-  console.log("Journal component mounted");
-
+  const { user, isLoaded } = useUser();
   const [entry, setEntry] = useState<JournalEntry>({
     date: new Date(),
     mood: "",
@@ -31,7 +31,10 @@ export default function Journal({ onEntriesChange }: JournalProps) {
 
   // Load entries from localStorage on component mount
   useEffect(() => {
-    const savedEntries = localStorage.getItem("journalEntries");
+    if (!isLoaded || !user) return;
+
+    const storageKey = `journalEntries_${user.id}`;
+    const savedEntries = localStorage.getItem(storageKey);
     if (savedEntries) {
       const parsedEntries = JSON.parse(savedEntries).map(
         (entry: Omit<JournalEntry, "date"> & { date: string }) => ({
@@ -42,12 +45,16 @@ export default function Journal({ onEntriesChange }: JournalProps) {
       setEntries(parsedEntries);
       onEntriesChange?.(parsedEntries);
     }
-  }, [onEntriesChange]);
+  }, [onEntriesChange, user, isLoaded]);
 
   // Save entries to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem("journalEntries", JSON.stringify(entries));
-  }, [entries]);
+    if (!isLoaded || !user) return;
+
+    const storageKey = `journalEntries_${user.id}`;
+    localStorage.setItem(storageKey, JSON.stringify(entries));
+    onEntriesChange?.(entries);
+  }, [entries, user, isLoaded, onEntriesChange]);
 
   const moods = ["Great", "Good", "Neutral", "Anxious", "Stressed", "Tired"];
 
@@ -82,7 +89,6 @@ export default function Journal({ onEntriesChange }: JournalProps) {
       return;
     }
 
-    console.log("Saving entry:", entry);
     try {
       if (editingIndex !== null) {
         // Update existing entry
@@ -92,7 +98,6 @@ export default function Journal({ onEntriesChange }: JournalProps) {
           _id: entries[editingIndex]._id || Date.now().toString(),
         };
         setEntries(newEntries);
-        onEntriesChange?.(newEntries);
         toast.success("Journal entry updated!");
         setEditingIndex(null);
       } else {
@@ -103,7 +108,6 @@ export default function Journal({ onEntriesChange }: JournalProps) {
         };
         const newEntries = [...entries, newEntry];
         setEntries(newEntries);
-        onEntriesChange?.(newEntries);
         toast.success("Journal entry saved!");
       }
 
@@ -154,7 +158,6 @@ export default function Journal({ onEntriesChange }: JournalProps) {
     try {
       const newEntries = entries.filter((_, i) => i !== index);
       setEntries(newEntries);
-      onEntriesChange?.(newEntries);
       toast.success("Entry deleted successfully!", {
         duration: 4000,
         position: "top-center",
@@ -192,7 +195,7 @@ export default function Journal({ onEntriesChange }: JournalProps) {
                   className={`p-2 rounded transition-colors ${
                     entry.mood === mood
                       ? "bg-blue-600 text-white"
-                      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                      : "bg-white/80 border border-gray-300 text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   {mood}
@@ -214,7 +217,7 @@ export default function Journal({ onEntriesChange }: JournalProps) {
                   className={`p-2 rounded transition-colors ${
                     entry.triggers.includes(trigger)
                       ? "bg-red-100 text-red-700 border border-red-300"
-                      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                      : "bg-white/80 border border-gray-300 text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   {trigger}
@@ -231,7 +234,7 @@ export default function Journal({ onEntriesChange }: JournalProps) {
             <textarea
               value={entry.notes}
               onChange={handleNotesChange}
-              className="w-full h-32 p-4 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700"
+              className="w-full h-32 p-4 bg-white/80 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700"
               placeholder="How are you feeling? What are your goals for today? Any challenges you're facing?"
             />
           </div>
@@ -264,7 +267,7 @@ export default function Journal({ onEntriesChange }: JournalProps) {
           {entries.map((entry, index) => (
             <div
               key={entry._id || index}
-              className="border border-gray-200 rounded-lg p-4 bg-white"
+              className="border border-gray-200 rounded-lg p-4 bg-white/80"
             >
               <div className="flex justify-between items-start mb-2">
                 <p className="text-sm text-gray-500">

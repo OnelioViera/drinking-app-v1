@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Toaster, toast } from "react-hot-toast";
+import { useState, useEffect } from "react";
+import { Toaster } from "react-hot-toast";
 import SobrietyCounter from "@/components/SobrietyCounter";
 import Journal from "@/components/Journal";
 import AIChat from "@/components/AIChat";
 import ProgressGraph from "@/components/ProgressGraph";
+import { useUser, SignInButton, SignUpButton } from "@clerk/nextjs";
 
 interface JournalEntry {
   date: Date;
@@ -20,7 +21,7 @@ const Fireworks = () => {
   return (
     <div className="fixed inset-0 pointer-events-none z-50">
       {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-black animate-overlay" />
+      <div className="absolute inset-0 bg-blue-100 animate-overlay" />
 
       {/* Encouragement Message */}
       <div className="absolute inset-0 flex items-center justify-center">
@@ -136,33 +137,25 @@ const Fireworks = () => {
 };
 
 export default function Home() {
+  const { isSignedIn, user } = useUser();
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [showFireworks, setShowFireworks] = useState(false);
-  const mainRef = useRef<HTMLDivElement>(null);
-
-  // Calculate time elapsed since start date
-  const getTimeElapsed = () => {
-    if (!startDate) return 0;
-    const now = new Date();
-    return now.getTime() - startDate.getTime();
-  };
-
-  // Check if milestone is achieved
-  const isMilestoneAchieved = (hours: number) => {
-    const timeElapsed = getTimeElapsed();
-    return timeElapsed >= hours * 60 * 60 * 1000;
-  };
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
-    // Load start date from localStorage
-    const savedDate = localStorage.getItem("sobrietyStartDate");
+    if (!isSignedIn || !user) return;
+
+    // Load start date from localStorage with user-specific key
+    const userStartDateKey = `sobrietyStartDate_${user.id}`;
+    const savedDate = localStorage.getItem(userStartDateKey);
     if (savedDate) {
       setStartDate(new Date(savedDate));
     }
 
-    // Load journal entries from localStorage
-    const savedEntries = localStorage.getItem("journalEntries");
+    // Load journal entries from localStorage with user-specific key
+    const userEntriesKey = `journalEntries_${user.id}`;
+    const savedEntries = localStorage.getItem(userEntriesKey);
     if (savedEntries) {
       const parsedEntries = JSON.parse(savedEntries).map(
         (entry: Omit<JournalEntry, "date"> & { date: string }) => ({
@@ -172,248 +165,246 @@ export default function Home() {
       );
       setJournalEntries(parsedEntries);
     }
-  }, []);
-
-  // Prevent scrolling on state change
-  useEffect(() => {
-    if (startDate) {
-      const scrollPosition = window.scrollY;
-      requestAnimationFrame(() => {
-        window.scrollTo(0, scrollPosition);
-      });
-    }
-  }, [startDate]);
+  }, [isSignedIn, user]);
 
   // Update localStorage when entries change
   useEffect(() => {
+    if (!isSignedIn || !user) return;
+
+    const userEntriesKey = `journalEntries_${user.id}`;
     if (journalEntries.length > 0) {
-      localStorage.setItem("journalEntries", JSON.stringify(journalEntries));
+      localStorage.setItem(userEntriesKey, JSON.stringify(journalEntries));
     } else {
-      localStorage.removeItem("journalEntries");
+      localStorage.removeItem(userEntriesKey);
     }
-  }, [journalEntries]);
+  }, [journalEntries, isSignedIn, user]);
 
   const handleSetStartDate = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user) return;
+
     const today = new Date();
     setStartDate(today);
-    localStorage.setItem("sobrietyStartDate", today.toISOString());
+    const userStartDateKey = `sobrietyStartDate_${user.id}`;
+    localStorage.setItem(userStartDateKey, today.toISOString());
     setShowFireworks(true);
     setTimeout(() => setShowFireworks(false), 10000);
-    document.body.style.overflow = "hidden";
-    document.body.style.position = "fixed";
-    document.body.style.width = "100%";
-    document.body.style.top = `-${window.scrollY}px`;
-    setTimeout(() => {
-      document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.width = "";
-      document.body.style.top = "";
-    }, 100);
-    toast.success("Sobriety timer started!", {
-      duration: 4000,
-      position: "top-center",
-      style: {
-        background: "#4CAF50",
-        color: "#fff",
-        padding: "16px",
-        borderRadius: "8px",
-      },
-    });
   };
 
-  const handleResetTimer = () => {
-    localStorage.removeItem("sobrietyStartDate");
-    setStartDate(null);
-    toast.error("Sobriety timer reset", {
-      duration: 4000,
-      position: "top-center",
-      style: {
-        background: "#f44336",
-        color: "#fff",
-        padding: "16px",
-        borderRadius: "8px",
-      },
-    });
-  };
-
-  return (
-    <main
-      className="min-h-screen bg-gradient-to-b from-blue-50 to-white overflow-x-hidden"
-      ref={mainRef}
-    >
-      <Toaster />
-      {showFireworks && <Fireworks />}
-      <div className="container mx-auto px-4 py-8 overflow-x-hidden">
-        <h1 className="text-4xl font-bold text-center text-blue-800 mb-8">
-          Your Journey to Sobriety
-        </h1>
-
-        {startDate ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-8">
-              <SobrietyCounter
-                startDate={startDate}
-                onResetAction={handleResetTimer}
-              />
-              <AIChat />
-            </div>
-            <Journal onEntriesChange={setJournalEntries} />
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+        <div className="container mx-auto px-4 py-16">
+          {/* Hero Section */}
+          <div className="text-center mb-16">
+            <h1 className="text-5xl font-bold text-blue-600 mb-6">
+              Your Journey to Sobriety Starts Here
+            </h1>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Take control of your life with our comprehensive sobriety tracking
+              tool. Track your progress, celebrate milestones, and build a
+              healthier future.
+            </p>
           </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-            <h2 className="text-2xl font-semibold text-blue-700 mb-4">
-              Set Your Sobriety Start Date
-            </h2>
-            <button
-              onClick={handleSetStartDate}
-              className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition"
-              type="button"
-            >
-              Start Today
-            </button>
-          </div>
-        )}
 
-        {/* Progress Graph */}
-        {startDate && journalEntries.length > 0 && (
-          <div className="mt-8">
-            <ProgressGraph entries={journalEntries} />
-          </div>
-        )}
-
-        {/* Milestones & Achievements Section */}
-        {startDate && (
-          <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-2xl font-semibold text-blue-700 mb-4">
-              Milestones & Achievements
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div
-                className={`p-4 rounded-lg transition-all duration-300 ${
-                  isMilestoneAchieved(24)
-                    ? "bg-green-100 border-2 border-green-500"
-                    : "bg-blue-50"
-                }`}
-              >
-                <h3 className="text-lg font-medium text-blue-700 mb-2">
-                  24 Hours
-                </h3>
-                <p className="text-gray-600">
-                  First day of sobriety - a crucial step in your journey
-                </p>
-                {isMilestoneAchieved(24) && (
-                  <div className="mt-2 text-green-600 font-medium">
-                    ✓ Achieved!
-                  </div>
-                )}
-              </div>
-              <div
-                className={`p-4 rounded-lg transition-all duration-300 ${
-                  isMilestoneAchieved(720)
-                    ? "bg-green-100 border-2 border-green-500"
-                    : "bg-blue-50"
-                }`}
-              >
-                <h3 className="text-lg font-medium text-blue-700 mb-2">
-                  30 Days
-                </h3>
-                <p className="text-gray-600">
-                  One month milestone - physical improvements begin
-                </p>
-                {isMilestoneAchieved(720) && (
-                  <div className="mt-2 text-green-600 font-medium">
-                    ✓ Achieved!
-                  </div>
-                )}
-              </div>
-              <div
-                className={`p-4 rounded-lg transition-all duration-300 ${
-                  isMilestoneAchieved(2160)
-                    ? "bg-green-100 border-2 border-green-500"
-                    : "bg-blue-50"
-                }`}
-              >
-                <h3 className="text-lg font-medium text-blue-700 mb-2">
-                  90 Days
-                </h3>
-                <p className="text-gray-600">
-                  Three months - significant progress in recovery
-                </p>
-                {isMilestoneAchieved(2160) && (
-                  <div className="mt-2 text-green-600 font-medium">
-                    ✓ Achieved!
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="mt-6 text-center">
+          {/* Features Section */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+            <div className="bg-white p-6 rounded-lg shadow-lg">
+              <h3 className="text-xl font-semibold text-blue-600 mb-4">
+                Track Your Progress
+              </h3>
               <p className="text-gray-600">
-                Each milestone is a victory worth celebrating. Keep going!
+                Monitor your sobriety journey with our intuitive counter and
+                progress tracking tools.
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-lg">
+              <h3 className="text-xl font-semibold text-blue-600 mb-4">
+                Journal Your Journey
+              </h3>
+              <p className="text-gray-600">
+                Record your thoughts, feelings, and milestones in your personal
+                journal.
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-lg">
+              <h3 className="text-xl font-semibold text-blue-600 mb-4">
+                Get Support
+              </h3>
+              <p className="text-gray-600">
+                Access AI-powered support and resources to help you stay on
+                track.
               </p>
             </div>
           </div>
-        )}
 
-        {/* Resources Section */}
-        <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-2xl font-semibold text-blue-700 mb-4">
-            Emergency Resources
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h3 className="text-lg font-medium text-gray-700 mb-2">
-                Helplines
-              </h3>
-              <ul className="space-y-2">
-                <li className="text-blue-600 hover:text-blue-800">
-                  <a href="tel:1-800-662-4357">
-                    SAMHSA Helpline: 1-800-662-4357
-                  </a>
-                </li>
-                <li className="text-blue-600 hover:text-blue-800">
-                  <a href="tel:1-800-273-8255">
-                    National Suicide Prevention Lifeline: 1-800-273-8255
-                  </a>
-                </li>
-              </ul>
+          {/* Benefits Section */}
+          <div className="bg-white rounded-lg shadow-lg p-8 mb-16">
+            <h2 className="text-3xl font-bold text-blue-600 mb-6 text-center">
+              Benefits of Starting Your Sobriety Journey
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-xl font-semibold text-blue-600 mb-3">
+                  Physical Benefits
+                </h3>
+                <ul className="list-disc list-inside text-gray-600 space-y-2">
+                  <li>Improved sleep quality</li>
+                  <li>Better physical health</li>
+                  <li>Increased energy levels</li>
+                  <li>Clearer thinking</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-blue-600 mb-3">
+                  Mental Benefits
+                </h3>
+                <ul className="list-disc list-inside text-gray-600 space-y-2">
+                  <li>Reduced anxiety and stress</li>
+                  <li>Better emotional stability</li>
+                  <li>Improved relationships</li>
+                  <li>Greater self-confidence</li>
+                </ul>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-medium text-gray-700 mb-2">
-                Support Groups
-              </h3>
-              <ul className="space-y-2">
-                <li className="text-blue-600 hover:text-blue-800">
-                  <a
-                    href="https://www.aa.org"
-                    target="_blank"
-                    rel="noopener noreferrer"
+          </div>
+
+          {/* Call to Action */}
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-blue-600 mb-6">
+              Ready to Start Your Journey?
+            </h2>
+            <p className="text-xl text-gray-600 mb-8">
+              Join thousands of others who have taken the first step towards a
+              better life.
+            </p>
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className="bg-blue-600 text-white px-8 py-4 rounded-lg text-xl font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Start Your Journey Today
+            </button>
+          </div>
+
+          {/* Auth Modal */}
+          {showAuthModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+                <h3 className="text-2xl font-bold text-blue-600 mb-6 text-center">
+                  Choose Your Path
+                </h3>
+                <div className="space-y-4">
+                  <SignInButton mode="modal">
+                    <button className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors">
+                      Sign In
+                    </button>
+                  </SignInButton>
+                  <SignUpButton mode="modal">
+                    <button className="w-full bg-green-600 text-white px-6 py-3 rounded-lg text-lg font-semibold hover:bg-green-700 transition-colors">
+                      Create Account
+                    </button>
+                  </SignUpButton>
+                  <button
+                    onClick={() => setShowAuthModal(false)}
+                    className="w-full bg-gray-200 text-gray-700 px-6 py-3 rounded-lg text-lg font-semibold hover:bg-gray-300 transition-colors"
                   >
-                    Alcoholics Anonymous
-                  </a>
-                </li>
-                <li className="text-blue-600 hover:text-blue-800">
-                  <a
-                    href="https://www.smartrecovery.org"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    SMART Recovery
-                  </a>
-                </li>
-              </ul>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Show welcome screen for new users
+  if (isSignedIn && !startDate) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Toaster position="top-center" />
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-3xl mx-auto text-center">
+            <h1 className="text-4xl font-bold text-blue-600 mb-6">
+              Welcome to Your Sobriety Journey
+            </h1>
+            <p className="text-xl text-gray-600 mb-8">
+              Take the first step towards a healthier, happier life. Let&apos;s
+              begin tracking your progress together.
+            </p>
+            <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+              <h2 className="text-2xl font-semibold text-blue-700 mb-4">
+                Ready to Start?
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Click the button below to begin your journey. We&apos;ll help
+                you track your progress, celebrate milestones, and build a
+                stronger future.
+              </p>
+              <button
+                onClick={handleSetStartDate}
+                className="bg-blue-600 text-white px-8 py-4 rounded-lg text-xl font-semibold hover:bg-blue-700 transition-colors"
+              >
+                Start My Journey
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-lg shadow-lg">
+                <h3 className="text-xl font-semibold text-blue-600 mb-3">
+                  Track Progress
+                </h3>
+                <p className="text-gray-600">
+                  Monitor your sobriety journey with our intuitive counter and
+                  progress tracking tools.
+                </p>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-lg">
+                <h3 className="text-xl font-semibold text-blue-600 mb-3">
+                  Journal Your Journey
+                </h3>
+                <p className="text-gray-600">
+                  Record your thoughts, feelings, and milestones in your
+                  personal journal.
+                </p>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-lg">
+                <h3 className="text-xl font-semibold text-blue-600 mb-3">
+                  Get Support
+                </h3>
+                <p className="text-gray-600">
+                  Access AI-powered support and resources to help you stay on
+                  track.
+                </p>
+              </div>
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
 
-        {/* Motivational Quote */}
-        <div className="mt-8 text-center">
-          <blockquote className="text-xl text-gray-600 italic">
-            &ldquo;Recovery is hard. Regret is harder.&rdquo;
-          </blockquote>
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Toaster position="top-center" />
+      {showFireworks && <Fireworks />}
+
+      <div className="container mx-auto h-screen">
+        <div className="grid grid-cols-1 md:grid-cols-2 h-full">
+          <div className="space-y-8 p-8">
+            <SobrietyCounter
+              startDate={startDate}
+              onSetStartDateAction={handleSetStartDate}
+            />
+            <AIChat />
+            <ProgressGraph entries={journalEntries} />
+          </div>
+          <div className="p-8">
+            <Journal onEntriesChange={setJournalEntries} />
+          </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

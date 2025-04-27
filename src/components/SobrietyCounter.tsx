@@ -4,20 +4,23 @@ import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 
 interface SobrietyCounterProps {
-  startDate: Date;
-  onResetAction: () => void;
+  startDate: Date | null;
+  onSetStartDateAction: (e: React.MouseEvent) => void;
 }
 
 export default function SobrietyCounter({
   startDate,
-  onResetAction,
+  onSetStartDateAction,
 }: SobrietyCounterProps) {
   const [days, setDays] = useState(0);
   const [hours, setHours] = useState(0);
   const [minutes, setMinutes] = useState(0);
   const [seconds, setSeconds] = useState(0);
+  const [showResetWarning, setShowResetWarning] = useState(false);
 
   useEffect(() => {
+    if (!startDate) return;
+
     const calculateTime = () => {
       const now = new Date();
       const diff = now.getTime() - startDate.getTime();
@@ -42,44 +45,39 @@ export default function SobrietyCounter({
   }, [startDate]);
 
   const handleReset = () => {
-    toast(
-      (t) => (
-        <div className="flex flex-col items-center">
-          <p className="mb-2">
-            Are you sure you want to reset your sobriety timer?
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                onResetAction();
-                toast.dismiss(t.id);
-              }}
-              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
-            >
-              Yes, Reset
-            </button>
-            <button
-              onClick={() => toast.dismiss(t.id)}
-              className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ),
-      {
-        duration: 5000,
-        position: "top-center",
-        style: {
-          background: "#fff",
-          color: "#333",
-          padding: "16px",
-          borderRadius: "8px",
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-        },
-      }
-    );
+    setShowResetWarning(true);
   };
+
+  const confirmReset = () => {
+    onSetStartDateAction({} as React.MouseEvent);
+    setShowResetWarning(false);
+    toast.success("Timer has been reset. Your new journey begins now!");
+  };
+
+  const cancelReset = () => {
+    setShowResetWarning(false);
+  };
+
+  if (!startDate) {
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold text-blue-700 mb-4">
+            Start Your Sobriety Journey
+          </h2>
+          <p className="text-gray-600 mb-4">
+            Begin tracking your progress towards a healthier life
+          </p>
+          <button
+            onClick={onSetStartDateAction}
+            className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition"
+          >
+            Start Today
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
@@ -89,7 +87,7 @@ export default function SobrietyCounter({
         </h2>
         <button
           onClick={handleReset}
-          className="bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 transition"
+          className="text-red-600 hover:text-red-700 text-sm font-medium"
         >
           Reset Timer
         </button>
@@ -117,6 +115,35 @@ export default function SobrietyCounter({
           Started on {startDate.toLocaleDateString()}
         </p>
       </div>
+
+      {/* Reset Warning Modal */}
+      {showResetWarning && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-semibold text-red-600 mb-4">
+              Warning: Reset Timer
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to reset your timer? This will start your
+              journey from today and cannot be undone.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={confirmReset}
+                className="flex-1 bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 transition"
+              >
+                Yes, Reset
+              </button>
+              <button
+                onClick={cancelReset}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded hover:bg-gray-300 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
