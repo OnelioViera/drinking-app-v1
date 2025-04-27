@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import JournalEntry from "@/models/JournalEntry";
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: Request): Promise<NextResponse> {
   try {
     await connectDB();
+    const url = new URL(request.url);
+    const id = url.pathname.split("/").pop();
+
     const updatedEntry = await JournalEntry.findByIdAndUpdate(
-      params.id,
+      id,
       { deleted: true },
       { new: true }
     );
