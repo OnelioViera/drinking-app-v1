@@ -140,7 +140,8 @@ export default function Journal({ onEntriesChange }: JournalProps) {
             toast.success("Journal entry updated!");
             setEditingIndex(null);
           } else {
-            throw new Error("Failed to update entry");
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Failed to update entry");
           }
         }
       } else {
@@ -165,7 +166,8 @@ export default function Journal({ onEntriesChange }: JournalProps) {
           setEntries(newEntries);
           toast.success("Journal entry saved!");
         } else {
-          throw new Error("Failed to save entry");
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to save entry");
         }
       }
 
@@ -178,7 +180,9 @@ export default function Journal({ onEntriesChange }: JournalProps) {
       });
     } catch (error) {
       console.error("Error saving entry:", error);
-      toast.error("Failed to save journal entry");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save journal entry"
+      );
     } finally {
       setIsLoading(false);
     }

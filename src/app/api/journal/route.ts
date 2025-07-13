@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Failed to save journal entry:", error);
     return NextResponse.json(
-      { error: "Failed to save journal entry" },
+      { error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Failed to fetch journal entries:", error);
     return NextResponse.json(
-      { error: "Failed to fetch journal entries" },
+      { error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
