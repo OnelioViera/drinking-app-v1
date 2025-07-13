@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 
 const journalEntrySchema = new mongoose.Schema({
+  userId: {
+    type: String,
+    required: [true, "Please provide a user ID"],
+  },
   date: {
     type: Date,
     required: [true, "Please provide a date"],

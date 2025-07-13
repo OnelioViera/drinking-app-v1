@@ -152,32 +152,7 @@ export default function Home() {
     if (savedDate) {
       setStartDate(new Date(savedDate));
     }
-
-    // Load journal entries from localStorage with user-specific key
-    const userEntriesKey = `journalEntries_${user.id}`;
-    const savedEntries = localStorage.getItem(userEntriesKey);
-    if (savedEntries) {
-      const parsedEntries = JSON.parse(savedEntries).map(
-        (entry: Omit<JournalEntry, "date"> & { date: string }) => ({
-          ...entry,
-          date: new Date(entry.date),
-        })
-      );
-      setJournalEntries(parsedEntries);
-    }
   }, [isSignedIn, user]);
-
-  // Update localStorage when entries change
-  useEffect(() => {
-    if (!isSignedIn || !user) return;
-
-    const userEntriesKey = `journalEntries_${user.id}`;
-    if (journalEntries.length > 0) {
-      localStorage.setItem(userEntriesKey, JSON.stringify(journalEntries));
-    } else {
-      localStorage.removeItem(userEntriesKey);
-    }
-  }, [journalEntries, isSignedIn, user]);
 
   const handleSetStartDate = (e: React.MouseEvent) => {
     e.preventDefault();

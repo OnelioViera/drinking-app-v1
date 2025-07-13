@@ -10,6 +10,7 @@ interface JournalEntry {
   mood: string;
   triggers: string[];
   notes: string;
+  userId?: string;
 }
 
 interface JournalProps {
@@ -27,32 +28,45 @@ export default function Journal({ onEntriesChange }: JournalProps) {
 
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
-  // Load entries from localStorage on component mount
+  // Load entries from API on component mount
   useEffect(() => {
     if (!isLoaded || !user) return;
 
-    const storageKey = `journalEntries_${user.id}`;
-    const savedEntries = localStorage.getItem(storageKey);
-    if (savedEntries) {
-      const parsedEntries = JSON.parse(savedEntries).map(
-        (entry: Omit<JournalEntry, "date"> & { date: string }) => ({
-          ...entry,
-          date: new Date(entry.date),
-        })
-      );
-      setEntries(parsedEntries);
-      onEntriesChange?.(parsedEntries);
-    }
+    const loadEntries = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/journal?userId=${user.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          const parsedEntries = data.map(
+            (entry: JournalEntry & { _id: string }) => ({
+              ...entry,
+              date: new Date(entry.date),
+            })
+          );
+          setEntries(parsedEntries);
+          onEntriesChange?.(parsedEntries);
+        } else {
+          console.error("Failed to load entries");
+          toast.error("Failed to load journal entries");
+        }
+      } catch (error) {
+        console.error("Error loading entries:", error);
+        toast.error("Failed to load journal entries");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadEntries();
   }, [onEntriesChange, user, isLoaded]);
 
-  // Save entries to localStorage whenever they change
+  // Save entries to API whenever they change
   useEffect(() => {
     if (!isLoaded || !user) return;
-
-    const storageKey = `journalEntries_${user.id}`;
-    localStorage.setItem(storageKey, JSON.stringify(entries));
     onEntriesChange?.(entries);
   }, [entries, user, isLoaded, onEntriesChange]);
 
@@ -89,26 +103,70 @@ export default function Journal({ onEntriesChange }: JournalProps) {
       return;
     }
 
+    if (!user) {
+      toast.error("Please sign in to save entries");
+      return;
+    }
+
     try {
+      setIsLoading(true);
+
+      const entryData = {
+        ...entry,
+        userId: user.id,
+        date: entry.date.toISOString(),
+      };
+
       if (editingIndex !== null) {
         // Update existing entry
-        const newEntries = [...entries];
-        newEntries[editingIndex] = {
-          ...entry,
-          _id: entries[editingIndex]._id || Date.now().toString(),
-        };
-        setEntries(newEntries);
-        toast.success("Journal entry updated!");
-        setEditingIndex(null);
+        const existingEntry = entries[editingIndex];
+        if (existingEntry._id) {
+          const response = await fetch(`/api/journal/${existingEntry._id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(entryData),
+          });
+
+          if (response.ok) {
+            const updatedEntry = await response.json();
+            const newEntries = [...entries];
+            newEntries[editingIndex] = {
+              ...updatedEntry,
+              date: new Date(updatedEntry.date),
+            };
+            setEntries(newEntries);
+            toast.success("Journal entry updated!");
+            setEditingIndex(null);
+          } else {
+            throw new Error("Failed to update entry");
+          }
+        }
       } else {
         // Create new entry
-        const newEntry = {
-          ...entry,
-          _id: Date.now().toString(),
-        };
-        const newEntries = [...entries, newEntry];
-        setEntries(newEntries);
-        toast.success("Journal entry saved!");
+        const response = await fetch("/api/journal", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(entryData),
+        });
+
+        if (response.ok) {
+          const newEntry = await response.json();
+          const newEntries = [
+            ...entries,
+            {
+              ...newEntry,
+              date: new Date(newEntry.date),
+            },
+          ];
+          setEntries(newEntries);
+          toast.success("Journal entry saved!");
+        } else {
+          throw new Error("Failed to save entry");
+        }
       }
 
       // Reset form
@@ -121,6 +179,8 @@ export default function Journal({ onEntriesChange }: JournalProps) {
     } catch (error) {
       console.error("Error saving entry:", error);
       toast.error("Failed to save journal entry");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -154,25 +214,51 @@ export default function Journal({ onEntriesChange }: JournalProps) {
     });
   };
 
-  const handleDelete = (index: number) => {
+  const handleDelete = async (index: number) => {
     try {
-      const newEntries = entries.filter((_, i) => i !== index);
-      setEntries(newEntries);
-      toast.success("Entry deleted successfully!", {
-        duration: 4000,
-        position: "top-center",
-        style: {
-          background: "#4CAF50",
-          color: "#fff",
-          padding: "16px",
-          borderRadius: "8px",
-        },
-      });
+      const entryToDelete = entries[index];
+      if (entryToDelete._id) {
+        const response = await fetch(`/api/journal/${entryToDelete._id}`, {
+          method: "DELETE",
+        });
+
+        if (response.ok) {
+          const newEntries = entries.filter((_, i) => i !== index);
+          setEntries(newEntries);
+          toast.success("Entry deleted successfully!", {
+            duration: 4000,
+            position: "top-center",
+            style: {
+              background: "#4CAF50",
+              color: "#fff",
+              padding: "16px",
+              borderRadius: "8px",
+            },
+          });
+        } else {
+          throw new Error("Failed to delete entry");
+        }
+      } else {
+        // Fallback to local deletion if no _id
+        const newEntries = entries.filter((_, i) => i !== index);
+        setEntries(newEntries);
+        toast.success("Entry deleted successfully!");
+      }
     } catch (error) {
       console.error("Error deleting entry:", error);
       toast.error("Failed to delete entry");
     }
   };
+
+  if (isLoading && entries.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="flex items-center justify-center h-32">
+          <div className="text-gray-500">Loading journal entries...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
@@ -242,14 +328,20 @@ export default function Journal({ onEntriesChange }: JournalProps) {
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition"
+              disabled={isLoading}
+              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {editingIndex !== null ? "Update Entry" : "Save Entry"}
+              {isLoading
+                ? "Saving..."
+                : editingIndex !== null
+                  ? "Update Entry"
+                  : "Save Entry"}
             </button>
             {editingIndex !== null && (
               <button
                 onClick={handleCancelEdit}
-                className="bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-700 transition"
+                disabled={isLoading}
+                className="bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
@@ -264,51 +356,57 @@ export default function Journal({ onEntriesChange }: JournalProps) {
           Previous Entries
         </h3>
         <div className="h-[300px] overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-          {entries.map((entry, index) => (
-            <div
-              key={entry._id || index}
-              className="border border-gray-200 rounded-lg p-4 bg-white/80"
-            >
-              <div className="flex justify-between items-start mb-2">
-                <p className="text-sm text-gray-500">
-                  {new Date(entry.date).toLocaleDateString()}
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEdit(index)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(index)}
-                    className="text-red-600 hover:text-red-800 text-sm font-medium"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-              <p className="font-medium text-blue-600">{entry.mood}</p>
-              {entry.triggers.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-sm text-gray-600">Triggers:</p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {entry.triggers.map((trigger) => (
-                      <span
-                        key={trigger}
-                        className="bg-red-100 text-red-700 px-2 py-1 rounded text-sm"
-                      >
-                        {trigger}
-                      </span>
-                    ))}
+          {entries.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              No journal entries yet. Start by adding your first entry above!
+            </div>
+          ) : (
+            entries.map((entry, index) => (
+              <div
+                key={entry._id || index}
+                className="border border-gray-200 rounded-lg p-4 bg-white/80"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <p className="text-sm text-gray-500">
+                    {new Date(entry.date).toLocaleDateString()}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(index)}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(index)}
+                      className="text-red-600 hover:text-red-800 text-sm font-medium"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
-              )}
-              {entry.notes && (
-                <p className="mt-2 text-gray-700">{entry.notes}</p>
-              )}
-            </div>
-          ))}
+                <p className="font-medium text-blue-600">{entry.mood}</p>
+                {entry.triggers.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-600">Triggers:</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {entry.triggers.map((trigger) => (
+                        <span
+                          key={trigger}
+                          className="bg-red-100 text-red-700 px-2 py-1 rounded text-sm"
+                        >
+                          {trigger}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {entry.notes && (
+                  <p className="mt-2 text-gray-700">{entry.notes}</p>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
