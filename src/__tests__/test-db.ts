@@ -1,11 +1,11 @@
-import connectDB from "./db";
+import { connectDB } from "../lib/db";
 import { MongoServerError } from "mongodb";
 
 async function testConnection() {
   try {
     console.log("Checking environment variables...");
     // Hide sensitive parts of the connection string
-    const connectionString = process.env.MONGODB_CONNECTION_STRING || "";
+    const connectionString = process.env.MONGODB_URI || "";
     const maskedString = connectionString.replace(
       /mongodb\+srv:\/\/([^:]+):([^@]+)@/,
       "mongodb+srv://[USERNAME]:[PASSWORD]@"

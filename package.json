@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test-db": "dotenv -e .env.local -- ts-node src/__tests__/test-db.ts"
+    "test-db": "dotenv -e .env.local -- ts-node src/__tests__/test-db.ts",
+    "test-connection": "node test-connection.js"
   },
   "dependencies": {
     "@clerk/nextjs": "^4.29.7",

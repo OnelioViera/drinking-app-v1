@@ -350,35 +350,6 @@ export default function Home() {
                 Start My Journey
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow-lg">
-                <h3 className="text-xl font-semibold text-blue-600 mb-3">
-                  Track Progress
-                </h3>
-                <p className="text-gray-600">
-                  Monitor your sobriety journey with our intuitive counter and
-                  progress tracking tools.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-lg">
-                <h3 className="text-xl font-semibold text-blue-600 mb-3">
-                  Journal Your Journey
-                </h3>
-                <p className="text-gray-600">
-                  Record your thoughts, feelings, and milestones in your
-                  personal journal.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-lg">
-                <h3 className="text-xl font-semibold text-blue-600 mb-3">
-                  Get Support
-                </h3>
-                <p className="text-gray-600">
-                  Access AI-powered support and resources to help you stay on
-                  track.
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
